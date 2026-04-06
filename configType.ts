@@ -275,6 +275,8 @@ export interface ConfigType {
      */
     errorLoggingWebhook?: string;
 
+    matchLoggingWebhook?: string;
+
     /**
      * Discord webhook URL for match-end embeds (game stats, teams, game id).
      * Optional; when unset, no game log is sent.
