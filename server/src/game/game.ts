@@ -598,8 +598,7 @@ export class Game {
         });
 
         // only save the game if it has more than 2 players lol
-        // Mamoun: commenting this out so 1v1s get saved and logged
-        // if (values.length < 2) return;
+        if (values.length < 2) return;
 
         await sendGameEndDiscordLog(Config.gameLogsWebhook, {
             gameId: this.id,
