@@ -191,6 +191,37 @@ app.post("/api/find_game", validateParams(zFindGameBody), async (c) => {
 });
 
 app.post(
+    "/api/report_fov_flag",
+    rateLimitMiddleware(10, 60 * 1000),
+    validateParams(
+        z.object({
+            drift: z.number(),
+            committed: z.number(),
+            actual: z.number(),
+            streak: z.number().optional(),
+        }),
+    ),
+    async (c) => {
+        const ip = getHonoIp(c, Config.apiServer.proxyIPHeader) ?? "unknown";
+        const body = c.req.valid("json");
+        let userId: string | null = null;
+        const sessionId = getCookie(c, "session") ?? null;
+        if (sessionId) {
+            try {
+                const account = await validateSessionToken(sessionId);
+                userId = account.user?.id ?? null;
+            } catch {
+                // ignore
+            }
+        }
+        server.logger.warn(
+            `[fov-flag] ip=${ip} user=${userId ?? "anon"} drift=${body.drift} committed=${body.committed} actual=${body.actual} streak=${body.streak ?? "n/a"}`,
+        );
+        return c.json({ success: true }, 200);
+    },
+);
+
+app.post(
     "/api/report_error",
     rateLimitMiddleware(5, 60 * 1000),
     validateParams(z.object({ loc: z.string(), error: z.any(), data: z.any() })),

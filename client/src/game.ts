@@ -12,6 +12,7 @@ import { Camera } from "./camera";
 import type { ConfigManager, DebugOptions } from "./config";
 import { debugLines } from "./debugLines";
 import { device } from "./device";
+import { reportFovTamper } from "./fovTelemetry";
 import { Editor } from "./editor";
 import { EmoteBarn } from "./emote";
 import { Gas } from "./gas";
@@ -103,6 +104,10 @@ export class Game {
     m_targetZoom!: number;
     m_debugZoom!: number;
     m_useDebugZoom!: boolean;
+
+    /** Zoom written at end of last frame; mismatch implies external tampering. */
+    m_lastCommittedZoom: number | null = null;
+    m_fovTamperStreak = 0;
 
     editor!: Editor;
 
@@ -410,6 +415,23 @@ export class Game {
         if (this.m_playing) {
             this.m_playingTicker += dt;
         }
+        if (this.m_playing && this.m_lastCommittedZoom !== null) {
+            const actual = this.m_camera.m_zoom;
+            const drift = Math.abs(actual - this.m_lastCommittedZoom);
+            if (drift > 1e-4) {
+                this.m_fovTamperStreak++;
+                if (this.m_fovTamperStreak >= 2) {
+                    reportFovTamper({
+                        drift,
+                        committed: this.m_lastCommittedZoom,
+                        actual,
+                        streak: this.m_fovTamperStreak,
+                    });
+                }
+            } else {
+                this.m_fovTamperStreak = 0;
+            }
+        }
         this.m_playerBarn.m_update(
             dt,
             this.m_activeId,
@@ -444,6 +466,7 @@ export class Game {
             this.m_camera.m_zoom,
             this.m_camera.m_targetZoom,
         );
+        this.m_lastCommittedZoom = this.m_camera.m_zoom;
         this.m_audioManager.cameraPos = v2.copy(this.m_camera.m_pos);
         if (this.m_input.keyPressed(Key.Escape)) {
             this.m_uiManager.toggleEscMenu();
